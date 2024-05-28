@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:crypto="http://www.mulesoft.org/schema/mule/crypto"
+	xmlns:db="http://www.mulesoft.org/schema/mule/db"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http" xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/db http://www.mulesoft.org/schema/mule/db/current/mule-db.xsd
+http://www.mulesoft.org/schema/mule/crypto http://www.mulesoft.org/schema/mule/crypto/current/mule-crypto.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
+	<http:listener-config name="HTTP_Listener_config1" doc:name="HTTP Listener config" doc:id="485a7e69-4894-4367-862c-ab1e14237b62" >
+		<http:listener-connection host="0.0.0.0" port="8082" />
+	</http:listener-config>
+	<db:config name="Database_Config" doc:name="Database Config" doc:id="5d75b85f-f8ef-4bec-9e6b-9e06f482051b" >
+		<db:my-sql-connection host="localhost" port="3306" user="root" password="123456" database="assignment5" />
+	</db:config>
+	<flow name="assignment-5-sysFlow" doc:id="2e0e91b1-7a98-4149-bbf5-33c72f2d6d3c" >
+		<http:listener doc:name="Listener" doc:id="1abc0518-fc83-4bd3-9b0f-3c0b79eb82f5" config-ref="HTTP_Listener_config1" path="/insert" allowedMethods="POST"/>
+		<ee:transform doc:name="Transform Message" doc:id="806df884-50c0-4534-affc-b831ae809a22" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import fromBase64 from dw::core::Binaries
+output application/octet-stream
+---
+fromBase64(payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<crypto:jce-decrypt-pbe doc:name="Jce decrypt pbe" doc:id="c1d974ed-d5e9-4a17-90f3-f6d44f7c16a3" password="mulesoft"/>
+		<ee:transform doc:name="Transform Message" doc:id="54cc4008-1d54-4b68-898f-18db84c2c5d3" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read(payload)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<db:insert doc:name="Insert" doc:id="9008a87a-2f52-485c-a0b5-5e53e125f897" config-ref="Database_Config">
+			<db:sql ><![CDATA[insert into employee values(:id,:nm,:cmp)]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{id: payload.id,
+	nm: payload.name,
+	cmp: payload.org
+}]]]></db:input-parameters>
+		</db:insert>
+		<ee:transform doc:name="Transform Message" doc:id="12ba2cc2-e679-4688-aad5-ef48a40b116c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="assignment-5-sysFlow1" doc:id="275b650c-a0d7-4aa3-a0ad-0ddbb186eeeb" >
+		<http:listener doc:name="Listener" doc:id="3ab07b6c-d987-49cb-8773-aa38fd520396" config-ref="HTTP_Listener_config1" path="/all" allowedMethods="GET"/>
+		<db:select doc:name="Select" doc:id="f44f56ca-ca9d-484b-a35f-a0f88eedc20a" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employee]]></db:sql>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="2964e4fa-ee2d-475a-9d7d-ff74b4a96932" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+	<flow name="assignment-5-sysFlow2" doc:id="f1257c3c-3bbf-46d6-92cc-af92bd113982" >
+		<http:listener doc:name="Listener" doc:id="1358a69f-2b57-44e4-86fe-c71e768cbee3" config-ref="HTTP_Listener_config1" path="/select/{id}" allowedMethods="GET"/>
+		<ee:transform doc:name="Transform Message" doc:id="08677e75-c68a-40d0-88db-19260b10f38c" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+import fromBase64 from dw::core::Binaries
+output application/octet-stream
+---
+fromBase64(attributes.uriParams.id)]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<crypto:jce-decrypt-pbe doc:name="Jce decrypt pbe" doc:id="25e3bb83-221d-41f5-a82a-d1e0c5b467db" password="mulesoft">
+		</crypto:jce-decrypt-pbe>
+		<db:select doc:name="Select" doc:id="b5dc4be1-578b-412d-a7c0-086f65a80376" config-ref="Database_Config">
+			<db:sql ><![CDATA[select * from employee where id =:id]]></db:sql>
+			<db:input-parameters ><![CDATA[#[{id: payload}]]]></db:input-parameters>
+		</db:select>
+		<ee:transform doc:name="Transform Message" doc:id="173e4df7-949d-4b13-9138-4e8fb19aca88" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+payload]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+	</flow>
+</mule>
